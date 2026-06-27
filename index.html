@@ -9,7 +9,567 @@
 <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg:#070b15;
+    --bg:#070b15;<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<title>TETRIS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#070b15; --panel:rgba(18,26,48,0.55); --panel-border:rgba(120,160,255,0.18);
+    --text:#cdd9f5; --muted:#6c7aa3; --accent:#46e6ff; --accent2:#b07bff;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;height:100%;}
+  body{
+    background:
+      radial-gradient(1200px 700px at 50% -10%, #16224a 0%, rgba(12,19,38,0) 60%),
+      radial-gradient(900px 600px at 110% 110%, #1a1240 0%, rgba(12,19,38,0) 55%),
+      var(--bg);
+    color:var(--text);
+    font-family:'Chakra Petch', system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    display:flex; align-items:center; justify-content:center; min-height:100%;
+    overflow:hidden; -webkit-tap-highlight-color:transparent;
+    touch-action:none;
+  }
+  .wrap{ display:flex; flex-direction:column; align-items:center; gap:10px; padding:10px; transform-origin:center center; }
+
+  .hdr{ width:100%; text-align:center; }
+  .title{ font-weight:700; letter-spacing:8px; font-size:22px;
+    background:linear-gradient(90deg,var(--accent),var(--accent2));
+    -webkit-background-clip:text; background-clip:text; color:transparent; margin:0; }
+  .statline{ display:flex; gap:14px; justify-content:center; flex-wrap:wrap; margin-top:4px;
+    font-size:11px; letter-spacing:2px; color:var(--muted); text-transform:uppercase; }
+  .statline b{ color:#eaf1ff; font-size:15px; font-weight:700; font-variant-numeric:tabular-nums; margin-left:4px; }
+
+  .game{ display:flex; gap:12px; align-items:flex-start; }
+  .side{ display:flex; flex-direction:column; gap:10px; width:120px; }
+  .panel{ background:var(--panel); border:1px solid var(--panel-border); border-radius:14px; padding:10px;
+    backdrop-filter:blur(8px); box-shadow:0 10px 40px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.04); }
+  .label{ font-size:10px; letter-spacing:3px; text-transform:uppercase; color:var(--muted); margin-bottom:8px; font-weight:600; }
+  canvas{ display:block; }
+  .mini{ background:rgba(4,8,18,0.35); border-radius:8px; }
+  .field-shell{ position:relative; border-radius:16px; padding:9px;
+    background:linear-gradient(180deg, rgba(20,30,58,0.6), rgba(10,16,32,0.6));
+    border:1px solid var(--panel-border);
+    box-shadow:0 20px 60px rgba(0,0,0,0.5), inset 0 0 60px rgba(70,230,255,0.04); }
+  #board{ border-radius:8px; background:rgba(4,8,18,0.6); }
+
+  .btn{ cursor:pointer; border:1px solid var(--panel-border); background:rgba(255,255,255,0.03); color:var(--text);
+    border-radius:10px; padding:8px 10px; font-family:inherit; font-weight:600; font-size:11px; letter-spacing:1px; transition:.15s; }
+  .btn:hover{ background:rgba(70,230,255,0.12); border-color:rgba(70,230,255,0.4); }
+  .btn.active{ background:rgba(70,230,255,0.16); border-color:rgba(70,230,255,0.5); color:#eaf1ff; }
+
+  .overlay{ position:absolute; inset:9px; border-radius:12px; background:rgba(6,10,22,0.88); backdrop-filter:blur(4px);
+    display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; gap:12px; z-index:5; }
+  .overlay.hidden{ display:none; }
+  .overlay h2{ margin:0; font-size:26px; letter-spacing:5px;
+    background:linear-gradient(90deg,var(--accent),var(--accent2)); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  .overlay p{ margin:0; color:var(--muted); font-size:12px; letter-spacing:1px; max-width:230px; line-height:1.5; }
+  .overlay .big{ color:var(--text); }
+  .play-btn{ cursor:pointer; border:none; border-radius:999px; padding:11px 30px; font-family:inherit; font-weight:700;
+    letter-spacing:3px; font-size:13px; color:#04101a; background:linear-gradient(90deg,var(--accent),var(--accent2));
+    box-shadow:0 8px 30px rgba(70,230,255,0.4); transition:.15s; }
+  .play-btn:active{ transform:translateY(1px); }
+
+  .flash{ position:absolute; left:0; right:0; top:46%; transform:translateY(-50%); text-align:center; font-weight:700;
+    letter-spacing:3px; font-size:16px; color:#eaf1ff; text-shadow:0 0 18px rgba(70,230,255,0.85);
+    opacity:0; pointer-events:none; z-index:4; transition:opacity .1s; }
+
+  /* ---- virtual pro controller ---- */
+  .procon{ width:100%; max-width:540px; display:flex; flex-direction:column; align-items:center; gap:6px;
+    user-select:none; -webkit-user-select:none; touch-action:none; }
+  .procon svg{ width:100%; height:auto; display:block; filter:drop-shadow(0 16px 26px rgba(0,0,0,0.5)); }
+  .pad-btn{ cursor:pointer; }
+  .pad-btn .vis{ transition:filter .06s ease; }
+  .pad-btn.pressed .vis{ filter:brightness(1.85) saturate(1.2); }
+  .legend{ font-size:10.5px; letter-spacing:1px; color:var(--muted); text-align:center; line-height:1.6; }
+  .legend b{ color:var(--text); }
+  .legend .kb{ color:#55608a; }
+</style>
+</head>
+<body>
+  <div class="wrap" id="wrap">
+    <div class="hdr">
+      <h1 class="title">T E T R I S</h1>
+      <div class="statline">
+        <span>SCORE<b id="score">0</b></span>
+        <span>LV<b id="level">1</b></span>
+        <span>LINES<b id="lines">0</b></span>
+        <span>TIME<b id="time">0:00</b></span>
+        <span>BEST<b id="best">0</b></span>
+      </div>
+    </div>
+
+    <div class="game">
+      <div class="side">
+        <div class="panel"><div class="label">Hold</div><canvas id="hold" class="mini" width="100" height="78"></canvas></div>
+        <button class="btn active" id="soundBtn">SOUND ON</button>
+      </div>
+
+      <div class="field-shell">
+        <canvas id="board" width="280" height="560"></canvas>
+        <div class="flash" id="flash"></div>
+        <div class="overlay" id="overlay">
+          <h2 id="ovTitle">TETRIS</h2>
+          <p id="ovText" class="big">下のプロコンで操作。<br>列をそろえて消そう。</p>
+          <button class="play-btn" id="playBtn">PRESS START</button>
+          <p id="ovHint">タップ / Enter で開始</p>
+        </div>
+      </div>
+
+      <div class="side">
+        <div class="panel"><div class="label">Next</div><canvas id="next" class="mini" width="100" height="234"></canvas></div>
+      </div>
+    </div>
+
+    <!-- Virtual Nintendo Switch Pro Controller -->
+    <div class="procon" id="procon">
+      <svg viewBox="0 0 560 350" xmlns="http://www.w3.org/2000/svg" aria-label="virtual pro controller">
+        <defs>
+          <linearGradient id="body" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#313951"/><stop offset="1" stop-color="#1a2030"/>
+          </linearGradient>
+          <linearGradient id="grip" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#2a3145"/><stop offset="1" stop-color="#161b28"/>
+          </linearGradient>
+          <linearGradient id="btn" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#454e66"/><stop offset="1" stop-color="#262d3e"/>
+          </linearGradient>
+          <linearGradient id="btnDark" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#2a3142"/><stop offset="1" stop-color="#181d29"/>
+          </linearGradient>
+          <radialGradient id="stick" cx="0.5" cy="0.4" r="0.7">
+            <stop offset="0" stop-color="#3b4257"/><stop offset="1" stop-color="#141826"/>
+          </radialGradient>
+        </defs>
+
+        <!-- grips + body -->
+        <g class="vis">
+          <ellipse cx="120" cy="245" rx="70" ry="102" transform="rotate(-20 120 245)" fill="url(#grip)"/>
+          <ellipse cx="440" cy="245" rx="70" ry="102" transform="rotate(20 440 245)" fill="url(#grip)"/>
+          <rect x="150" y="60" width="260" height="160" rx="62" fill="url(#body)"/>
+          <rect x="172" y="78" width="216" height="120" rx="48" fill="#10141f" opacity="0.35"/>
+        </g>
+
+        <!-- shoulders / triggers -->
+        <g class="pad-btn" data-act="hold">
+          <rect class="vis" x="165" y="20" width="80" height="22" rx="11" fill="url(#btnDark)"/>
+          <rect class="vis" x="150" y="38" width="100" height="34" rx="17" fill="url(#btn)"/>
+          <text class="vis" x="200" y="61" font-size="16" fill="#c6d2f0" text-anchor="middle" font-weight="700" font-family="Chakra Petch,Arial">L</text>
+          <rect x="148" y="18" width="104" height="58" fill="none" pointer-events="all"/>
+        </g>
+        <g class="pad-btn" data-act="hold">
+          <rect class="vis" x="315" y="20" width="80" height="22" rx="11" fill="url(#btnDark)"/>
+          <rect class="vis" x="310" y="38" width="100" height="34" rx="17" fill="url(#btn)"/>
+          <text class="vis" x="360" y="61" font-size="16" fill="#c6d2f0" text-anchor="middle" font-weight="700" font-family="Chakra Petch,Arial">R</text>
+          <rect x="308" y="18" width="104" height="58" fill="none" pointer-events="all"/>
+        </g>
+
+        <!-- left stick (decorative) -->
+        <g class="vis">
+          <circle cx="120" cy="120" r="34" fill="#11151f"/>
+          <circle cx="120" cy="120" r="25" fill="url(#stick)"/>
+          <circle cx="120" cy="120" r="25" fill="none" stroke="#000" stroke-opacity="0.4" stroke-width="2"/>
+        </g>
+
+        <!-- d-pad -->
+        <g class="pad-btn" data-act="hard" data-hold="0">
+          <rect class="vis" x="172" y="167" width="26" height="30" rx="6" fill="url(#btn)"/>
+          <path class="vis" d="M185 174 l6 8 h-12 z" fill="#9fb0d6"/>
+          <rect x="166" y="160" width="38" height="42" fill="none" pointer-events="all"/>
+        </g>
+        <g class="pad-btn" data-act="down" data-hold="1">
+          <rect class="vis" x="172" y="223" width="26" height="30" rx="6" fill="url(#btn)"/>
+          <path class="vis" d="M185 246 l6 -8 h-12 z" fill="#9fb0d6"/>
+          <rect x="166" y="218" width="38" height="44" fill="none" pointer-events="all"/>
+        </g>
+        <g class="pad-btn" data-act="left" data-hold="1">
+          <rect class="vis" x="142" y="197" width="30" height="26" rx="6" fill="url(#btn)"/>
+          <path class="vis" d="M150 210 l8 -6 v12 z" fill="#9fb0d6"/>
+          <rect x="136" y="191" width="42" height="38" fill="none" pointer-events="all"/>
+        </g>
+        <g class="pad-btn" data-act="right" data-hold="1">
+          <rect class="vis" x="198" y="197" width="30" height="26" rx="6" fill="url(#btn)"/>
+          <path class="vis" d="M220 210 l-8 -6 v12 z" fill="#9fb0d6"/>
+          <rect x="192" y="191" width="42" height="38" fill="none" pointer-events="all"/>
+        </g>
+        <rect class="vis" x="172" y="197" width="26" height="26" fill="url(#btn)"/>
+        <text class="vis" x="185" y="158" font-size="10" fill="#7f90b8" text-anchor="middle" font-family="Chakra Petch,Arial" letter-spacing="1">HARD</text>
+        <text class="vis" x="185" y="270" font-size="10" fill="#7f90b8" text-anchor="middle" font-family="Chakra Petch,Arial" letter-spacing="1">SOFT</text>
+
+        <!-- right stick (decorative) -->
+        <g class="vis">
+          <circle cx="360" cy="205" r="34" fill="#11151f"/>
+          <circle cx="360" cy="205" r="25" fill="url(#stick)"/>
+          <circle cx="360" cy="205" r="25" fill="none" stroke="#000" stroke-opacity="0.4" stroke-width="2"/>
+        </g>
+
+        <!-- ABXY (Nintendo layout: X top, A right, B bottom, Y left) -->
+        <g class="pad-btn" data-act="rotccw">
+          <circle class="vis" cx="440" cy="92" r="21" fill="url(#btn)"/>
+          <text class="vis" x="440" y="99" font-size="19" fill="#46a0ff" text-anchor="middle" font-weight="700" font-family="Chakra Petch,Arial">X</text>
+          <circle cx="440" cy="92" r="27" fill="none" pointer-events="all"/>
+        </g>
+        <g class="pad-btn" data-act="rotcw">
+          <circle class="vis" cx="470" cy="122" r="21" fill="url(#btn)"/>
+          <text class="vis" x="470" y="129" font-size="19" fill="#ff5d6c" text-anchor="middle" font-weight="700" font-family="Chakra Petch,Arial">A</text>
+          <circle cx="470" cy="122" r="27" fill="none" pointer-events="all"/>
+        </g>
+        <g class="pad-btn" data-act="rotccw">
+          <circle class="vis" cx="440" cy="152" r="21" fill="url(#btn)"/>
+          <text class="vis" x="440" y="159" font-size="19" fill="#ffd23b" text-anchor="middle" font-weight="700" font-family="Chakra Petch,Arial">B</text>
+          <circle cx="440" cy="152" r="27" fill="none" pointer-events="all"/>
+        </g>
+        <g class="pad-btn" data-act="rotcw">
+          <circle class="vis" cx="410" cy="122" r="21" fill="url(#btn)"/>
+          <text class="vis" x="410" y="129" font-size="19" fill="#54e07a" text-anchor="middle" font-weight="700" font-family="Chakra Petch,Arial">Y</text>
+          <circle cx="410" cy="122" r="27" fill="none" pointer-events="all"/>
+        </g>
+
+        <!-- minus / plus -->
+        <g class="pad-btn" data-act="pause">
+          <circle class="vis" cx="243" cy="118" r="13" fill="url(#btnDark)"/>
+          <rect class="vis" x="237" y="116.5" width="12" height="3" rx="1.5" fill="#aeb9d6"/>
+          <circle cx="243" cy="118" r="19" fill="none" pointer-events="all"/>
+        </g>
+        <g class="pad-btn" data-act="pause">
+          <circle class="vis" cx="317" cy="118" r="13" fill="url(#btnDark)"/>
+          <rect class="vis" x="311" y="116.5" width="12" height="3" rx="1.5" fill="#aeb9d6"/>
+          <rect class="vis" x="315.5" y="112" width="3" height="12" rx="1.5" fill="#aeb9d6"/>
+          <circle cx="317" cy="118" r="19" fill="none" pointer-events="all"/>
+        </g>
+
+        <!-- capture / home (decorative) -->
+        <g class="vis">
+          <rect x="233" y="176" width="20" height="20" rx="4" fill="url(#btnDark)"/>
+          <circle cx="318" cy="187" r="14" fill="url(#btnDark)"/>
+          <circle cx="318" cy="187" r="6" fill="none" stroke="#5b6688" stroke-width="2"/>
+        </g>
+      </svg>
+      <div class="legend">
+        十字 <b>↑</b>ハードドロップ ・ <b>↓</b>ソフト ・ <b>←→</b>移動 ／ <b>L R</b> ホールド ／ <b>A Y</b> 右回転 ／ <b>B X</b> 左回転 ／ <b>＋－</b> ポーズ
+        <br><span class="kb">キーボード: ←→ 移動 / ↓ ソフト / Space ハード / ↑·X 右回転 / Z 左回転 / C ホールド / P ポーズ / R リスタート</span>
+      </div>
+    </div>
+  </div>
+
+<script>
+(() => {
+  "use strict";
+
+  // ---------- constants ----------
+  const COLS=10, VIS_ROWS=20, HIDDEN=2, ROWS=VIS_ROWS+HIDDEN;
+  const CELL=28, MINI=20;
+  const DAS=133, ARR=12, SOFT_FACTOR=20, LOCK_DELAY=500, MAX_LOCK_RESETS=15;
+
+  const COLORS={ I:'#3fe7ef', O:'#f5d23b', T:'#b562f0', S:'#54e07a', Z:'#ff5f6e', J:'#4d8bff', L:'#ff9a3d' };
+
+  const SHAPES={
+    I:[[0,0,0,0],[1,1,1,1],[0,0,0,0],[0,0,0,0]],
+    J:[[1,0,0],[1,1,1],[0,0,0]],
+    L:[[0,0,1],[1,1,1],[0,0,0]],
+    O:[[1,1],[1,1]],
+    S:[[0,1,1],[1,1,0],[0,0,0]],
+    T:[[0,1,0],[1,1,1],[0,0,0]],
+    Z:[[1,1,0],[0,1,1],[0,0,0]]
+  };
+
+  const KICKS_JLSTZ={
+    '01':[[0,0],[-1,0],[-1,1],[0,-2],[-1,-2]], '10':[[0,0],[1,0],[1,-1],[0,2],[1,2]],
+    '12':[[0,0],[1,0],[1,-1],[0,2],[1,2]], '21':[[0,0],[-1,0],[-1,1],[0,-2],[-1,-2]],
+    '23':[[0,0],[1,0],[1,1],[0,-2],[1,-2]], '32':[[0,0],[-1,0],[-1,-1],[0,2],[-1,2]],
+    '30':[[0,0],[-1,0],[-1,-1],[0,2],[-1,2]], '03':[[0,0],[1,0],[1,1],[0,-2],[1,-2]]
+  };
+  const KICKS_I={
+    '01':[[0,0],[-2,0],[1,0],[-2,-1],[1,2]], '10':[[0,0],[2,0],[-1,0],[2,1],[-1,-2]],
+    '12':[[0,0],[-1,0],[2,0],[-1,2],[2,-1]], '21':[[0,0],[1,0],[-2,0],[1,-2],[-2,1]],
+    '23':[[0,0],[2,0],[-1,0],[2,1],[-1,-2]], '32':[[0,0],[-2,0],[1,0],[-2,-1],[1,2]],
+    '30':[[0,0],[1,0],[-2,0],[1,-2],[-2,1]], '03':[[0,0],[-1,0],[2,0],[-1,2],[2,-1]]
+  };
+  const KICKS_180=[[0,0],[1,0],[-1,0],[0,-1],[1,-1],[-1,-1],[0,1],[2,0],[-2,0]];
+
+  function rotateCW(m){ const n=m.length,r=[]; for(let i=0;i<n;i++)r.push(new Array(n).fill(0));
+    for(let y=0;y<n;y++)for(let x=0;x<n;x++)r[x][n-1-y]=m[y][x]; return r; }
+  const STATES={};
+  for(const k in SHAPES){ const s=[SHAPES[k]]; for(let i=1;i<4;i++)s.push(rotateCW(s[i-1])); STATES[k]=s; }
+
+  // ---------- canvases ----------
+  const boardC=document.getElementById('board'), bx=boardC.getContext('2d');
+  const holdC=document.getElementById('hold'), hx=holdC.getContext('2d');
+  const nextC=document.getElementById('next'), nx=nextC.getContext('2d');
+  function setupDPR(c,ctx,w,h){ const d=Math.max(1,Math.min(3,window.devicePixelRatio||1));
+    c.width=w*d; c.height=h*d; c.style.width=w+'px'; c.style.height=h+'px'; ctx.setTransform(d,0,0,d,0,0); }
+  setupDPR(boardC,bx,COLS*CELL,VIS_ROWS*CELL);
+  setupDPR(holdC,hx,100,78);
+  setupDPR(nextC,nx,100,234);
+
+  // ---------- state ----------
+  let board, bag, queue, active, hold, holdUsed, ghostY;
+  let score, lines, level, combo, b2b, gameOver, paused, started;
+  let dropAcc, gravityMs, lockTimer, lockResets, locking, lastRotation;
+  let startTime, elapsed, best=0, rafId=null, lastT=0;
+  const keys={left:false,right:false,down:false};
+  let dasTimer=0, arrTimer=0, dasDir=0, flashTimer=0;
+
+  // ---------- audio ----------
+  const Sound=(()=>{
+    let ctx=null,master=null,on=true;
+    function ensure(){ if(ctx)return; const AC=window.AudioContext||window.webkitAudioContext; if(!AC)return;
+      ctx=new AC(); master=ctx.createGain(); master.gain.value=0.32; master.connect(ctx.destination); }
+    function resume(){ if(ctx&&ctx.state==='suspended') ctx.resume(); }
+    function tone(f,dur,type='square',vol=0.5,slide=null,delay=0){ if(!on||!ctx)return;
+      const t0=ctx.currentTime+delay,o=ctx.createOscillator(),g=ctx.createGain();
+      o.type=type; o.frequency.setValueAtTime(f,t0); if(slide)o.frequency.exponentialRampToValueAtTime(slide,t0+dur);
+      g.gain.setValueAtTime(0.0001,t0); g.gain.exponentialRampToValueAtTime(vol,t0+0.008);
+      g.gain.exponentialRampToValueAtTime(0.0001,t0+dur); o.connect(g); g.connect(master); o.start(t0); o.stop(t0+dur+0.02); }
+    function noise(dur,vol=0.4,delay=0){ if(!on||!ctx)return; const t0=ctx.currentTime+delay,n=Math.floor(ctx.sampleRate*dur);
+      const buf=ctx.createBuffer(1,n,ctx.sampleRate),d=buf.getChannelData(0);
+      for(let i=0;i<n;i++)d[i]=(Math.random()*2-1)*(1-i/n);
+      const src=ctx.createBufferSource(); src.buffer=buf; const g=ctx.createGain(); g.gain.value=vol;
+      const f=ctx.createBiquadFilter(); f.type='lowpass'; f.frequency.value=1200; src.connect(f); f.connect(g); g.connect(master); src.start(t0); }
+    return {
+      get on(){return on;}, toggle(){on=!on;return on;}, init(){ensure();resume();},
+      move(){tone(220,0.04,'square',0.18);}, rotate(){tone(360,0.05,'square',0.2);},
+      soft(){tone(160,0.02,'square',0.1);}, hard(){noise(0.12,0.5);tone(120,0.1,'sawtooth',0.25,60);},
+      lock(){tone(180,0.05,'triangle',0.25);}, hold(){tone(420,0.08,'sine',0.25,560);},
+      clear(n){const b=[0,523,587,659,784][Math.min(n,4)]||523; tone(b,0.12,'square',0.3); tone(b*1.5,0.12,'square',0.22,null,0.04);
+        if(n>=4){tone(b*2,0.22,'square',0.28,null,0.08);tone(b*2.5,0.25,'square',0.2,null,0.12);}},
+      tspin(){tone(660,0.1,'sawtooth',0.3,990);tone(990,0.14,'square',0.25,null,0.06);},
+      levelup(){[523,659,784,1046].forEach((f,i)=>tone(f,0.1,'square',0.25,null,i*0.07));},
+      over(){[440,392,330,262,196].forEach((f,i)=>tone(f,0.22,'sawtooth',0.3,null,i*0.12));}
+    };
+  })();
+
+  // ---------- helpers ----------
+  function newBoard(){ const b=[]; for(let r=0;r<ROWS;r++)b.push(new Array(COLS).fill(null)); return b; }
+  function refillBag(){ const p=['I','O','T','S','Z','J','L'];
+    for(let i=p.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[p[i],p[j]]=[p[j],p[i]];} bag.push(...p); }
+  function nextFromBag(){ if(bag.length<7)refillBag(); return bag.shift(); }
+  function spawn(type){ type=type||queue.shift(); if(queue.length<5)queue.push(nextFromBag());
+    const x=(type==='O')?4:3; return {type,rot:0,x,y:0,matrix:STATES[type][0]}; }
+
+  function collides(m,px,py){ const n=m.length;
+    for(let r=0;r<n;r++)for(let c=0;c<n;c++){ if(!m[r][c])continue; const br=py+r,bc=px+c;
+      if(bc<0||bc>=COLS||br>=ROWS)return true; if(br>=0&&board[br][bc])return true; } return false; }
+  function computeGhost(){ let gy=active.y; while(!collides(active.matrix,active.x,gy+1))gy++; ghostY=gy; }
+
+  function tryMove(dx,dy){ if(collides(active.matrix,active.x+dx,active.y+dy))return false;
+    active.x+=dx; active.y+=dy; if(dx!==0)lastRotation=false; resetLockIfGrounded(); computeGhost(); return true; }
+
+  function tryRotate(dir){ if(active.type==='O')return; const from=active.rot,to=(from+dir+4)%4,newM=STATES[active.type][to];
+    let placed=false;
+    if(dir===2){ for(const [dx,dy] of KICKS_180){ if(!collides(newM,active.x+dx,active.y+dy)){active.x+=dx;active.y+=dy;placed=true;break;} } }
+    else{ const table=(active.type==='I')?KICKS_I:KICKS_JLSTZ, kicks=table[`${from}${to}`];
+      for(const [kx,ky] of kicks){ const nxx=active.x+kx,nyy=active.y-ky; if(!collides(newM,nxx,nyy)){active.x=nxx;active.y=nyy;placed=true;break;} } }
+    if(placed){ active.rot=to; active.matrix=newM; lastRotation=true; resetLockIfGrounded(); computeGhost(); Sound.rotate(); } }
+
+  function resetLockIfGrounded(){ if(collides(active.matrix,active.x,active.y+1)){
+      if(locking){ if(lockResets<MAX_LOCK_RESETS){lockTimer=0;lockResets++;} } else { locking=true; lockTimer=0; }
+    } else { locking=false; lockTimer=0; } }
+
+  function hardDrop(){ let dist=0; while(!collides(active.matrix,active.x,active.y+1)){active.y++;dist++;} score+=dist*2; Sound.hard(); lockPiece(); }
+
+  function detectTSpin(){ if(active.type!=='T'||!lastRotation)return 0; const cx=active.x,cy=active.y;
+    function filled(x,y){ if(x<0||x>=COLS||y>=ROWS)return true; if(y<0)return false; return !!board[y][x]; }
+    const tl=filled(cx,cy),tr=filled(cx+2,cy),bl=filled(cx,cy+2),br=filled(cx+2,cy+2);
+    if((tl+tr+bl+br)<3)return 0; let front;
+    if(active.rot===0)front=[tl,tr]; else if(active.rot===1)front=[tr,br]; else if(active.rot===2)front=[bl,br]; else front=[tl,bl];
+    return (front[0]&&front[1])?2:1; }
+
+  function lockPiece(){ const m=active.matrix,n=m.length; let allHidden=true;
+    for(let r=0;r<n;r++)for(let c=0;c<n;c++){ if(!m[r][c])continue; const br=active.y+r,bc=active.x+c;
+      if(br>=0&&br<ROWS)board[br][bc]=active.type; if(br>=HIDDEN)allHidden=false; }
+    const tspin=detectTSpin(); Sound.lock();
+    const full=[]; for(let r=0;r<ROWS;r++){ if(board[r].every(c=>c))full.push(r); }
+    const cleared=full.length;
+    if(cleared>0){ for(const r of full)board.splice(r,1); for(let i=0;i<cleared;i++)board.unshift(new Array(COLS).fill(null)); }
+    scoreClear(cleared,tspin);
+    if(allHidden){ return endGame(); }
+    active=spawn(); holdUsed=false; locking=false; lockTimer=0; lockResets=0; lastRotation=false; dropAcc=0;
+    if(collides(active.matrix,active.x,active.y)){ return endGame(); }
+    computeGhost(); drawNext(); drawHold(); }
+
+  function scoreClear(cleared,tspin){ const L=level; let pts=0,label='',isB2B=false;
+    if(tspin>0){ if(tspin===1){ pts=cleared===0?100:(cleared===1?200:400); label='T-SPIN MINI'; }
+      else{ pts=[400,800,1200,1600][cleared]; label=['T-SPIN','T-SPIN SINGLE','T-SPIN DOUBLE','T-SPIN TRIPLE'][cleared]; }
+      if(cleared>0)isB2B=true; Sound.tspin();
+    } else if(cleared>0){ pts=[0,100,300,500,800][cleared]; label=['','SINGLE','DOUBLE','TRIPLE','TETRIS'][cleared];
+      if(cleared===4)isB2B=true; Sound.clear(cleared); }
+    if(cleared>0){ if(isB2B&&b2b>0){pts=Math.floor(pts*1.5);label='B2B '+label;} b2b=isB2B?b2b+1:0; }
+    if(cleared>0){ combo++; if(combo>1)pts+=50*(combo-1)*L; } else combo=0;
+    pts*=L; score+=pts;
+    if(cleared>0||tspin>0){ let txt=label; if(combo>1&&cleared>0)txt+=' '+combo+'x'; showFlash(txt); }
+    if(cleared>0){ lines+=cleared; const nl=Math.floor(lines/10)+1; if(nl>level){level=nl;gravityMs=computeGravity(level);Sound.levelup();} }
+    updateHud(); }
+
+  function computeGravity(lv){ const l=Math.min(lv,20); return Math.max(16, Math.pow(0.8-(l-1)*0.007,l-1)*1000); }
+
+  function doHold(){ if(holdUsed)return; holdUsed=true; locking=false; lockTimer=0; lockResets=0; lastRotation=false; dropAcc=0;
+    if(hold===null){ hold=active.type; active=spawn(); } else { const t=hold; hold=active.type; active=spawn(t); }
+    if(collides(active.matrix,active.x,active.y)){ return endGame(); }
+    computeGhost(); Sound.hold(); drawHold(); drawNext(); }
+
+  // ---------- rendering ----------
+  function shade(hex,amt){ const n=parseInt(hex.slice(1),16); let r=(n>>16)&255,g=(n>>8)&255,b=n&255;
+    r=Math.max(0,Math.min(255,r+amt));g=Math.max(0,Math.min(255,g+amt));b=Math.max(0,Math.min(255,b+amt)); return `rgb(${r},${g},${b})`; }
+  function roundRect(ctx,x,y,w,h,r){ r=Math.min(r,w/2,h/2); ctx.beginPath(); ctx.moveTo(x+r,y);
+    ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
+  function drawCell(ctx,px,py,size,color,opts={}){ const pad=1,x=px+pad,y=py+pad,s=size-pad*2;
+    if(opts.ghost){ ctx.fillStyle='rgba(255,255,255,0.06)'; roundRect(ctx,x,y,s,s,4); ctx.fill();
+      ctx.strokeStyle=color; ctx.globalAlpha=0.55; ctx.lineWidth=2; roundRect(ctx,x+1,y+1,s-2,s-2,3); ctx.stroke(); ctx.globalAlpha=1; return; }
+    const g=ctx.createLinearGradient(x,y,x,y+s); g.addColorStop(0,shade(color,40)); g.addColorStop(0.5,color); g.addColorStop(1,shade(color,-45));
+    ctx.fillStyle=g; roundRect(ctx,x,y,s,s,4); ctx.fill();
+    ctx.fillStyle='rgba(255,255,255,0.28)'; roundRect(ctx,x+2,y+2,s-4,Math.max(2,s*0.22),3); ctx.fill();
+    ctx.strokeStyle='rgba(0,0,0,0.25)'; ctx.lineWidth=1; roundRect(ctx,x+0.5,y+0.5,s-1,s-1,4); ctx.stroke(); }
+
+  function drawBoard(){ const W=COLS*CELL,H=VIS_ROWS*CELL; bx.clearRect(0,0,W,H);
+    bx.strokeStyle='rgba(120,150,220,0.07)'; bx.lineWidth=1;
+    for(let c=0;c<=COLS;c++){bx.beginPath();bx.moveTo(c*CELL+0.5,0);bx.lineTo(c*CELL+0.5,H);bx.stroke();}
+    for(let r=0;r<=VIS_ROWS;r++){bx.beginPath();bx.moveTo(0,r*CELL+0.5);bx.lineTo(W,r*CELL+0.5);bx.stroke();}
+    for(let r=HIDDEN;r<ROWS;r++)for(let c=0;c<COLS;c++){ if(board[r][c])drawCell(bx,c*CELL,(r-HIDDEN)*CELL,CELL,COLORS[board[r][c]]); }
+    if(active&&started&&!gameOver){ const m=active.matrix,n=m.length;
+      for(let r=0;r<n;r++)for(let c=0;c<n;c++){ if(!m[r][c])continue; const br=ghostY+r-HIDDEN,bc=active.x+c;
+        if(br>=0)drawCell(bx,bc*CELL,br*CELL,CELL,COLORS[active.type],{ghost:true}); }
+      for(let r=0;r<n;r++)for(let c=0;c<n;c++){ if(!m[r][c])continue; const br=active.y+r-HIDDEN,bc=active.x+c;
+        if(br>=0)drawCell(bx,bc*CELL,br*CELL,CELL,COLORS[active.type]); } } }
+
+  function drawPieceInBox(ctx,type,bX,bY,bW,bH,cell){ const m=STATES[type][0],n=m.length;
+    let minR=n,maxR=-1,minC=n,maxC=-1;
+    for(let r=0;r<n;r++)for(let c=0;c<n;c++)if(m[r][c]){minR=Math.min(minR,r);maxR=Math.max(maxR,r);minC=Math.min(minC,c);maxC=Math.max(maxC,c);}
+    const w=(maxC-minC+1)*cell,h=(maxR-minR+1)*cell,ox=bX+(bW-w)/2,oy=bY+(bH-h)/2;
+    for(let r=minR;r<=maxR;r++)for(let c=minC;c<=maxC;c++)if(m[r][c])drawCell(ctx,ox+(c-minC)*cell,oy+(r-minR)*cell,cell,COLORS[type]); }
+
+  function drawHold(){ hx.clearRect(0,0,100,78); if(hold){ hx.globalAlpha=holdUsed?0.4:1; drawPieceInBox(hx,hold,0,0,100,78,MINI); hx.globalAlpha=1; } }
+  function drawNext(){ nx.clearRect(0,0,100,234); for(let i=0;i<3;i++){ if(queue[i])drawPieceInBox(nx,queue[i],0,i*78,100,78,MINI); } }
+
+  // ---------- HUD ----------
+  const el=id=>document.getElementById(id);
+  function updateHud(){ el('score').textContent=score.toLocaleString(); el('level').textContent=level;
+    el('lines').textContent=lines; el('best').textContent=best.toLocaleString(); }
+  function fmtTime(ms){ const s=Math.floor(ms/1000); return Math.floor(s/60)+':'+String(s%60).padStart(2,'0'); }
+  function showFlash(txt){ const f=el('flash'); f.textContent=txt; f.style.opacity='1'; flashTimer=900; }
+
+  // ---------- loop ----------
+  function step(t){ rafId=requestAnimationFrame(step); const dt=Math.min(50,t-lastT); lastT=t;
+    if(!started||paused||gameOver){ drawBoard(); return; }
+    elapsed=performance.now()-startTime; el('time').textContent=fmtTime(elapsed);
+    if(dasDir!==0){ dasTimer+=dt; if(dasTimer>=DAS){ arrTimer+=dt;
+      while(arrTimer>=ARR){ arrTimer-=ARR; if(!tryMove(dasDir,0))break; Sound.move(); } } }
+    const eff = keys.down ? Math.max(16,gravityMs/SOFT_FACTOR) : gravityMs;
+    dropAcc+=dt;
+    while(dropAcc>=eff){ dropAcc-=eff;
+      if(!collides(active.matrix,active.x,active.y+1)){ active.y++; if(keys.down){score+=1;Sound.soft();} lastRotation=false; computeGhost(); }
+      else break; }
+    if(collides(active.matrix,active.x,active.y+1)){ locking=true; lockTimer+=dt; if(lockTimer>=LOCK_DELAY)lockPiece(); }
+    else { locking=false; lockTimer=0; }
+    if(flashTimer>0){ flashTimer-=dt; if(flashTimer<=0)el('flash').style.opacity='0'; }
+    drawBoard(); }
+
+  // ---------- game control ----------
+  function reset(){ board=newBoard(); bag=[]; queue=[]; for(let i=0;i<6;i++)queue.push(nextFromBag());
+    hold=null; holdUsed=false; score=0; lines=0; level=1; combo=0; b2b=0; gameOver=false; paused=false;
+    dropAcc=0; gravityMs=computeGravity(1); lockTimer=0; lockResets=0; locking=false; lastRotation=false;
+    dasDir=0; dasTimer=0; arrTimer=0; keys.left=keys.right=keys.down=false;
+    active=spawn(); computeGhost(); startTime=performance.now(); elapsed=0;
+    updateHud(); drawHold(); drawNext(); drawBoard(); }
+
+  function startGame(){ Sound.init(); started=true; gameOver=false; paused=false; reset(); hideOverlay();
+    if(!rafId){ lastT=performance.now(); rafId=requestAnimationFrame(step); } }
+
+  function endGame(){ gameOver=true; Sound.over(); if(score>best){best=score;updateHud();}
+    showOverlay('GAME OVER','スコア '+score.toLocaleString()+' / レベル '+level+'<br>ライン '+lines,'RETRY','タップ / R でもう一度'); }
+
+  function togglePause(){ if(!started||gameOver)return; paused=!paused;
+    if(paused){ showOverlay('PAUSED','一時停止中','RESUME','＋ / P / Esc で再開'); }
+    else { hideOverlay(); startTime=performance.now()-elapsed; } }
+
+  function showOverlay(title,text,btn,hint){ el('ovTitle').textContent=title; el('ovText').innerHTML=text;
+    el('playBtn').textContent=btn; el('ovHint').innerHTML=hint; el('overlay').classList.remove('hidden'); }
+  function hideOverlay(){ el('overlay').classList.add('hidden'); }
+
+  // ---------- unified input (keyboard + controller) ----------
+  function ctrlPress(act){
+    if(!started||gameOver){ startGame(); return; }
+    if(paused){ if(act==='pause')togglePause(); return; }
+    switch(act){
+      case 'left': if(!keys.left){keys.left=true; if(tryMove(-1,0))Sound.move(); dasDir=-1; dasTimer=0; arrTimer=0;} break;
+      case 'right': if(!keys.right){keys.right=true; if(tryMove(1,0))Sound.move(); dasDir=1; dasTimer=0; arrTimer=0;} break;
+      case 'down': keys.down=true; break;
+      case 'hard': hardDrop(); break;
+      case 'rotcw': tryRotate(1); break;
+      case 'rotccw': tryRotate(-1); break;
+      case 'hold': doHold(); break;
+      case 'pause': togglePause(); break;
+    }
+  }
+  function ctrlRelease(act){
+    if(act==='left'){ keys.left=false; if(dasDir===-1)dasDir=keys.right?1:0; dasTimer=0; arrTimer=0; }
+    else if(act==='right'){ keys.right=false; if(dasDir===1)dasDir=keys.left?-1:0; dasTimer=0; arrTimer=0; }
+    else if(act==='down'){ keys.down=false; }
+  }
+
+  // keyboard
+  document.addEventListener('keydown',(e)=>{ const k=e.key;
+    if(['ArrowLeft','ArrowRight','ArrowDown','ArrowUp',' '].includes(k))e.preventDefault();
+    if(!started||gameOver){ if(k==='Enter'||k==='r'||k==='R'||k===' ')startGame(); return; }
+    if(k==='p'||k==='P'||k==='Escape'){ togglePause(); return; }
+    if(paused)return;
+    if(k==='r'||k==='R'){ startGame(); return; }
+    switch(k){
+      case 'ArrowLeft': if(!e.repeat)ctrlPress('left'); break;
+      case 'ArrowRight': if(!e.repeat)ctrlPress('right'); break;
+      case 'ArrowDown': keys.down=true; break;
+      case 'ArrowUp': case 'x': case 'X': if(!e.repeat)tryRotate(1); break;
+      case 'z': case 'Z': if(!e.repeat)tryRotate(-1); break;
+      case 'a': case 'A': if(!e.repeat)tryRotate(2); break;
+      case ' ': if(!e.repeat)hardDrop(); break;
+      case 'c': case 'C': case 'Shift': if(!e.repeat)doHold(); break;
+    }
+  });
+  document.addEventListener('keyup',(e)=>{ const k=e.key;
+    if(k==='ArrowLeft')ctrlRelease('left');
+    if(k==='ArrowRight')ctrlRelease('right');
+    if(k==='ArrowDown')keys.down=false;
+  });
+
+  // virtual controller (pointer events, multitouch-safe)
+  document.querySelectorAll('.pad-btn').forEach(g=>{
+    const act=g.dataset.act;
+    g.addEventListener('pointerdown',(e)=>{ e.preventDefault(); try{g.setPointerCapture(e.pointerId);}catch(_){}
+      g.classList.add('pressed'); Sound.init(); ctrlPress(act); });
+    const rel=(e)=>{ g.classList.remove('pressed'); ctrlRelease(act); };
+    g.addEventListener('pointerup',rel);
+    g.addEventListener('pointercancel',rel);
+    g.addEventListener('lostpointercapture',rel);
+  });
+
+  // overlay button + sound toggle
+  el('playBtn').addEventListener('click',()=>{ if(!started||gameOver)startGame(); else if(paused)togglePause(); });
+  el('soundBtn').addEventListener('click',()=>{ Sound.init(); const on=Sound.toggle();
+    el('soundBtn').textContent=on?'SOUND ON':'SOUND OFF'; el('soundBtn').classList.toggle('active',on); });
+
+  // responsive scale-to-fit
+  function fitScale(){ const wrap=document.getElementById('wrap'); wrap.style.transform='scale(1)';
+    const r=wrap.getBoundingClientRect(); const s=Math.min(1, window.innerWidth/(r.width+16), window.innerHeight/(r.height+16));
+    wrap.style.transform='scale('+s+')'; }
+  window.addEventListener('resize',fitScale);
+  window.addEventListener('orientationchange',()=>setTimeout(fitScale,200));
+
+  // init
+  reset(); started=false;
+  showOverlay('TETRIS','下のプロコンで操作。<br>列をそろえて消そう。','PRESS START','タップ / Enter で開始');
+  drawNext(); drawHold(); fitScale();
+  lastT=performance.now(); rafId=requestAnimationFrame(step);
+})();
+</script>
+</body>
+</html>
+
     --bg2:#0c1326;
     --panel:rgba(18,26,48,0.55);
     --panel-border:rgba(120,160,255,0.18);
