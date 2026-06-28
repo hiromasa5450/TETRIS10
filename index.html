@@ -3,7 +3,853 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<title>TETRIS — Switch Pro Controller</title>
+<style>
+  :root{
+    --bg:#0a0e1a;
+    --bg2:#0f1626;
+    --panel:#141d33;
+    --panel-line:#243352;
+    --grid:#18233d;
+    --grid2:#1d2a47;
+    --text:#e8eefc;
+    --muted:#7e8db0;
+    --accent:#36d0ff;
+    --accent2:#ff4d6d;
+    --ghost:rgba(255,255,255,.16);
+
+    --I:#1ec8e8; --O:#f3d13a; --T:#b94dff; --S:#4ee06a; --Z:#ff5160; --J:#3d7bff; --L:#ff9d2e;
+
+    /* Pro Controller */
+    --con-body:#262b33;
+    --con-body2:#1c2026;
+    --con-edge:#3a414c;
+    --con-btn:#3b424d;
+    --con-btn-press:#5a616d;
+    --con-stick:#1a1d22;
+    --con-stick-edge:#43485a;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0; padding:0; height:100%;}
+  body{
+    background:
+      radial-gradient(1200px 700px at 50% -10%, #15203a 0%, var(--bg) 60%),
+      var(--bg);
+    color:var(--text);
+    font-family:"Segoe UI",-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif;
+    overflow:hidden;
+    -webkit-user-select:none; user-select:none;
+    touch-action:none;
+    overscroll-behavior:none;
+  }
+  #app{
+    height:100dvh; height:100vh;
+    display:flex; flex-direction:column; align-items:center;
+    padding:max(6px, env(safe-area-inset-top)) 8px max(6px, env(safe-area-inset-bottom));
+    gap:8px;
+  }
+
+  /* ---- play area ---- */
+  .play{
+    display:flex; gap:8px; align-items:stretch; justify-content:center;
+    width:100%;
+    flex:1 1 auto; min-height:0;
+  }
+  .side{
+    display:flex; flex-direction:column; gap:8px; justify-content:flex-start;
+  }
+  .side.left{align-items:flex-end;}
+  .side.right{align-items:flex-start;}
+  .panel{
+    background:linear-gradient(180deg, var(--panel) 0%, var(--bg2) 100%);
+    border:1px solid var(--panel-line);
+    border-radius:10px;
+    padding:6px 8px;
+  }
+  .panel .label{
+    font-size:10px; letter-spacing:.18em; color:var(--muted);
+    text-transform:uppercase; margin:0 0 4px; font-weight:700;
+  }
+  .mini{display:block; image-rendering:auto;}
+  .board-wrap{
+    position:relative;
+    height:100%;
+    display:flex; align-items:center; justify-content:center;
+  }
+  #board{
+    height:100%; width:auto; aspect-ratio:1/2;
+    background:linear-gradient(180deg,#0c1426,#0a1120);
+    border:2px solid var(--panel-line);
+    border-radius:8px;
+    box-shadow:0 0 0 1px #00000060, 0 18px 50px -20px #000;
+    display:block;
+  }
+  .stats{display:flex; flex-direction:column; gap:6px; min-width:84px;}
+  .stat{
+    background:linear-gradient(180deg, var(--panel) 0%, var(--bg2) 100%);
+    border:1px solid var(--panel-line);
+    border-radius:10px; padding:6px 8px;
+  }
+  .stat .k{font-size:9px; letter-spacing:.16em; color:var(--muted); text-transform:uppercase; font-weight:700;}
+  .stat .v{font-size:18px; font-weight:800; font-variant-numeric:tabular-nums; line-height:1.1;}
+  .nexts{display:flex; flex-direction:column; gap:6px;}
+  .next-cell{background:#0c1426; border:1px solid var(--grid2); border-radius:7px;}
+
+  /* overlay */
+  .overlay{
+    position:absolute; inset:0; border-radius:8px;
+    background:rgba(7,11,22,.86);
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:14px; text-align:center; padding:18px;
+    backdrop-filter:blur(2px);
+  }
+  .overlay.hidden{display:none;}
+  .overlay h1{
+    margin:0; font-size:30px; font-weight:900; letter-spacing:.04em;
+    background:linear-gradient(90deg,var(--I),var(--T),var(--Z),var(--L));
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+  }
+  .overlay h2{margin:0; font-size:22px; font-weight:900; letter-spacing:.06em; color:var(--accent2);}
+  .overlay p{margin:0; color:var(--muted); font-size:12px; line-height:1.6; max-width:240px;}
+  .btn{
+    appearance:none; border:1px solid var(--accent); color:#04121a;
+    background:var(--accent); font-weight:800; letter-spacing:.05em;
+    padding:11px 22px; border-radius:999px; font-size:14px; cursor:pointer;
+    box-shadow:0 8px 24px -10px var(--accent);
+  }
+  .btn:active{transform:translateY(1px);}
+
+  /* ---- Pro Controller ---- */
+  .controller{
+    position:relative;
+    width:min(620px, 98vw);
+    aspect-ratio:1.62/1;
+    flex:0 0 auto;
+    margin-top:2px;
+    filter:drop-shadow(0 22px 28px rgba(0,0,0,.55));
+    touch-action:none;
+  }
+  .con-svg{position:absolute; inset:0; width:100%; height:100%; pointer-events:none;}
+  .hit{
+    position:absolute; cursor:pointer; touch-action:none;
+    display:flex; align-items:center; justify-content:center;
+    color:#cdd6ea; font-weight:800; user-select:none;
+  }
+  .hit:active, .hit.down{filter:brightness(1.55);}
+  /* round face buttons */
+  .face{
+    width:14.6%; aspect-ratio:1/1; border-radius:50%;
+    background:radial-gradient(circle at 35% 30%, #4a515d, #2c313a 70%, #23272f);
+    border:1px solid #1b1e24;
+    box-shadow:inset 0 1px 1px #5b626f, inset 0 -3px 6px #14161b, 0 2px 3px #00000080;
+    font-size:clamp(11px,2.6vw,17px);
+  }
+  #btnA{top:34.5%; left:79.5%;}
+  #btnB{top:55%;   left:69.2%;}
+  #btnX{top:14%;   left:69.2%;}
+  #btnY{top:34.5%; left:59%;}
+  #btnA .lbl{color:#7fe3ff;} #btnX .lbl{color:#ffd05a;}
+  #btnB .lbl{color:#ff8aa0;} #btnY .lbl{color:#9fe6a8;}
+
+  /* dpad */
+  .dpad{position:absolute; top:50%; left:24.5%; width:24%; aspect-ratio:1/1; transform:translate(-50%,-50%);}
+  .dpad .arm{
+    position:absolute; background:linear-gradient(180deg,#3a414c,#23272f);
+    border:1px solid #15171c; box-shadow:inset 0 1px 1px #555c68, 0 2px 3px #0008;
+  }
+  .dpad .v{left:34%; top:0; width:32%; height:100%; border-radius:8px;}
+  .dpad .h{top:34%; left:0; height:32%; width:100%; border-radius:8px;}
+  .dpad .hit{position:absolute; z-index:2;}
+  #dUp{left:30%; top:-4%; width:40%; height:42%;}
+  #dDown{left:30%; top:62%; width:40%; height:42%;}
+  #dLeft{top:30%; left:-4%; height:40%; width:42%;}
+  #dRight{top:30%; left:62%; height:40%; width:42%;}
+  .dpad .glyph{position:absolute; pointer-events:none; color:#6f7790; font-size:10px;}
+
+  /* shoulder L/R */
+  .bumper{
+    height:8.5%; width:23%; border-radius:14px 14px 7px 7px;
+    background:linear-gradient(180deg,#3c434e,#23272f);
+    border:1px solid #15171c;
+    box-shadow:inset 0 1px 1px #5a616d, 0 3px 5px #0007;
+    font-size:clamp(10px,2.2vw,14px); color:#aab4cc;
+    top:3%;
+  }
+  #btnL{left:11.5%;}
+  #btnR{right:11.5%; left:auto;}
+  .trigger{
+    height:6.5%; width:16%; border-radius:12px 12px 5px 5px;
+    background:linear-gradient(180deg,#333941,#202329);
+    border:1px solid #15171c; top:-4.2%;
+    font-size:10px; color:#9aa3ba;
+  }
+  #btnZL{left:15%;} #btnZR{right:15%; left:auto;}
+
+  /* center small buttons */
+  .small{
+    width:6.4%; aspect-ratio:1/1; border-radius:50%;
+    background:radial-gradient(circle at 35% 30%,#3a3f49,#23272f);
+    border:1px solid #15171c; box-shadow:inset 0 1px 1px #565d69,0 2px 3px #0007;
+    font-size:11px; color:#aab4cc;
+  }
+  #btnMinus{top:24%; left:38.5%;}
+  #btnPlus{top:24%; left:55%;}
+  #btnHome{top:60%; left:55.5%; box-shadow:inset 0 0 0 1px #2a2e36, inset 0 1px 1px #565d69, 0 2px 3px #0007;}
+  #btnCapture{top:60.5%; left:39%; border-radius:5px;}
+  #btnHome.down{box-shadow:inset 0 0 8px var(--accent);}
+
+  .hint{
+    font-size:9.5px; color:var(--muted); text-align:center; line-height:1.5;
+    margin:0; max-width:620px;
+  }
+  .hint b{color:#b9c4e0; font-weight:700;}
+
+  @media (max-width:430px){
+    .stats{min-width:64px;}
+    .stat .v{font-size:15px;}
+    .panel{padding:5px 6px;}
+    .hint{display:none;}
+  }
+  @media (max-height:560px){
+    .controller{width:min(520px,80vw);}
+  }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div class="play">
+    <!-- left: hold + stats -->
+    <div class="side left">
+      <div class="panel">
+        <p class="label">HOLD</p>
+        <canvas id="hold" class="mini next-cell" width="120" height="90"></canvas>
+      </div>
+      <div class="stats">
+        <div class="stat"><div class="k">Score</div><div class="v" id="score">0</div></div>
+        <div class="stat"><div class="k">Lines</div><div class="v" id="lines">0</div></div>
+        <div class="stat"><div class="k">Level</div><div class="v" id="level">1</div></div>
+      </div>
+    </div>
+
+    <!-- board -->
+    <div class="board-wrap">
+      <canvas id="board" width="300" height="600"></canvas>
+      <div id="overlay" class="overlay">
+        <h1>TETRIS</h1>
+        <p>スタートでプレイ開始。十字キー上=ハードドロップ／下=ソフトドロップ／左右=移動、<b>L・R</b>=ホールド、<b>A・Y</b>=右回転、<b>B・X</b>=左回転。</p>
+        <button class="btn" id="startBtn">スタート</button>
+      </div>
+    </div>
+
+    <!-- right: next x3 -->
+    <div class="side right">
+      <div class="panel">
+        <p class="label">NEXT</p>
+        <div class="nexts">
+          <canvas id="next0" class="mini next-cell" width="96" height="72"></canvas>
+          <canvas id="next1" class="mini next-cell" width="84" height="60"></canvas>
+          <canvas id="next2" class="mini next-cell" width="84" height="60"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Switch Pro Controller ===== -->
+  <div class="controller" id="controller">
+    <svg class="con-svg" viewBox="0 0 162 100" preserveAspectRatio="none" aria-hidden="true">
+      <defs>
+        <linearGradient id="body" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#2c323b"/>
+          <stop offset="1" stop-color="#1a1d23"/>
+        </linearGradient>
+        <radialGradient id="sheen" cx="0.5" cy="0.1" r="0.9">
+          <stop offset="0" stop-color="#3a414c" stop-opacity=".7"/>
+          <stop offset="1" stop-color="#000" stop-opacity="0"/>
+        </radialGradient>
+      </defs>
+      <!-- main body + grips -->
+      <path fill="url(#body)" stroke="#0d0f13" stroke-width="1"
+        d="M20,14
+           C8,16 2,28 3,42
+           C4,58 14,70 30,86
+           C40,96 52,98 58,90
+           C62,85 66,82 81,82
+           C96,82 100,85 104,90
+           C110,98 122,96 132,86
+           C148,70 158,58 159,42
+           C160,28 154,16 142,14
+           C120,10 100,12 81,12
+           C62,12 42,10 20,14 Z"/>
+      <path fill="url(#sheen)"
+        d="M20,14 C60,9 102,9 142,14 C150,16 153,24 153,32 C110,24 52,24 9,32 C9,24 12,16 20,14 Z"/>
+      <!-- ring around right stick -->
+      <circle cx="107" cy="64" r="14" fill="#15181d" stroke="#0d0f13" stroke-width="1"/>
+      <!-- ring around left stick -->
+      <circle cx="36" cy="33" r="14" fill="#15181d" stroke="#0d0f13" stroke-width="1"/>
+    </svg>
+
+    <!-- left stick (decorative) -->
+    <div class="hit" style="top:13%;left:22.2%;width:17.3%;aspect-ratio:1/1;border-radius:50%;
+        background:radial-gradient(circle at 38% 32%,#3a3f49,#16181c 72%);
+        border:1px solid #0c0d10;box-shadow:inset 0 2px 4px #565d69,inset 0 -4px 8px #0a0b0e,0 2px 4px #0008;"></div>
+    <!-- right stick (decorative) -->
+    <div class="hit" style="top:50%;left:66%;width:17.3%;aspect-ratio:1/1;border-radius:50%;
+        background:radial-gradient(circle at 38% 32%,#3a3f49,#16181c 72%);
+        border:1px solid #0c0d10;box-shadow:inset 0 2px 4px #565d69,inset 0 -4px 8px #0a0b0e,0 2px 4px #0008;"></div>
+
+    <!-- shoulder -->
+    <div class="hit trigger" id="btnZL">ZL</div>
+    <div class="hit trigger" id="btnZR">ZR</div>
+    <div class="hit bumper" id="btnL">L</div>
+    <div class="hit bumper" id="btnR">R</div>
+
+    <!-- dpad -->
+    <div class="dpad">
+      <div class="arm v"></div>
+      <div class="arm h"></div>
+      <div class="hit" id="dUp"></div>
+      <div class="hit" id="dDown"></div>
+      <div class="hit" id="dLeft"></div>
+      <div class="hit" id="dRight"></div>
+      <span class="glyph" style="top:6%;left:46%;">▲</span>
+      <span class="glyph" style="bottom:6%;left:46%;">▼</span>
+      <span class="glyph" style="top:44%;left:6%;">◀</span>
+      <span class="glyph" style="top:44%;right:6%;">▶</span>
+    </div>
+
+    <!-- face buttons -->
+    <div class="hit face" id="btnX"><span class="lbl">X</span></div>
+    <div class="hit face" id="btnY"><span class="lbl">Y</span></div>
+    <div class="hit face" id="btnA"><span class="lbl">A</span></div>
+    <div class="hit face" id="btnB"><span class="lbl">B</span></div>
+
+    <!-- center -->
+    <div class="hit small" id="btnMinus">−</div>
+    <div class="hit small" id="btnPlus">＋</div>
+    <div class="hit small" id="btnCapture">▢</div>
+    <div class="hit small" id="btnHome">⌂</div>
+  </div>
+
+  <p class="hint">
+    キーボード: <b>←→</b>移動 / <b>↑</b>ハードドロップ / <b>↓</b>ソフトドロップ /
+    <b>X</b>右回転 / <b>Z</b>左回転 / <b>Shift・C</b>ホールド / <b>P</b>一時停止 /
+    プロコン <b>＋</b>一時停止 <b>−</b>リスタート <b>▢</b>サウンド切替
+  </p>
+</div>
+
+<script>
+"use strict";
+(function(){
+  /* ============================ 定数 ============================ */
+  const COLS = 10, ROWS = 20;
+  const COLORS = {I:'#1ec8e8',O:'#f3d13a',T:'#b94dff',S:'#4ee06a',Z:'#ff5160',J:'#3d7bff',L:'#ff9d2e'};
+  const TYPES = ['I','O','T','S','Z','J','L'];
+
+  // 各ミノの回転4状態（'X'が埋まり）。Iは4x4、Oは2x2、その他3x3。SRS準拠。
+  const SHAPES = {
+    I:[["....","XXXX","....","...."],["..X.","..X.","..X.","..X."],["....","....","XXXX","...."],[".X..",".X..",".X..",".X.."]],
+    J:[["X..","XXX","..."],[".XX",".X.",".X."],["...","XXX","..X"],[".X.",".X.","XX."]],
+    L:[["..X","XXX","..."],[".X.",".X.",".XX"],["...","XXX","X.."],["XX.",".X.",".X."]],
+    S:[[".XX","XX.","..."],[".X.",".XX","..X"],["...",".XX","XX."],["X..","XX.",".X."]],
+    Z:[["XX.",".XX","..."],["..X",".XX",".X."],["...","XX.",".XX"],[".X.","XX.","X.."]],
+    T:[[".X.","XXX","..."],[".X.",".XX",".X."],["...","XXX",".X."],[".X.","XX.",".X."]],
+    O:[["XX","XX"],["XX","XX"],["XX","XX"],["XX","XX"]]
+  };
+  // 文字列マトリクス→[x,y]セルリストに変換（事前計算）
+  const CELLS = {};
+  for(const t of TYPES){
+    CELLS[t] = SHAPES[t].map(g=>{
+      const out=[];
+      for(let y=0;y<g.length;y++) for(let x=0;x<g[y].length;x++) if(g[y][x]==='X') out.push([x,y]);
+      return out;
+    });
+  }
+  const SPAWN_X = {I:3,O:4,J:3,L:3,S:3,Z:3,T:3};
+
+  // SRS壁蹴り（y軸は上が正。盤面はy下向きなので適用時に符号反転）
+  const KICK_JLSTZ = {
+    '0>1':[[0,0],[-1,0],[-1,1],[0,-2],[-1,-2]],
+    '1>0':[[0,0],[1,0],[1,-1],[0,2],[1,2]],
+    '1>2':[[0,0],[1,0],[1,-1],[0,2],[1,2]],
+    '2>1':[[0,0],[-1,0],[-1,1],[0,-2],[-1,-2]],
+    '2>3':[[0,0],[1,0],[1,1],[0,-2],[1,-2]],
+    '3>2':[[0,0],[-1,0],[-1,-1],[0,2],[-1,2]],
+    '3>0':[[0,0],[-1,0],[-1,-1],[0,2],[-1,2]],
+    '0>3':[[0,0],[1,0],[1,1],[0,-2],[1,-2]]
+  };
+  const KICK_I = {
+    '0>1':[[0,0],[-2,0],[1,0],[-2,-1],[1,2]],
+    '1>0':[[0,0],[2,0],[-1,0],[2,1],[-1,-2]],
+    '1>2':[[0,0],[-1,0],[2,0],[-1,2],[2,-1]],
+    '2>1':[[0,0],[1,0],[-2,0],[1,-2],[-2,1]],
+    '2>3':[[0,0],[2,0],[-1,0],[2,1],[-1,-2]],
+    '3>2':[[0,0],[-2,0],[1,0],[-2,-1],[1,2]],
+    '3>0':[[0,0],[1,0],[-2,0],[1,-2],[-2,1]],
+    '0>3':[[0,0],[-1,0],[2,0],[-1,2],[2,-1]]
+  };
+
+  const DAS = 150, ARR = 38, SOFT_MS = 35, LOCK_DELAY = 700, MAX_LOCK_RESETS = 15;
+
+  /* ============================ 効果音 ============================ */
+  const Sound = {
+    ctx:null, enabled:true, master:null,
+    ensure(){
+      if(this.ctx) return;
+      try{
+        const AC = window.AudioContext || window.webkitAudioContext;
+        this.ctx = new AC();
+        this.master = this.ctx.createGain();
+        this.master.gain.value = 0.5;
+        this.master.connect(this.ctx.destination);
+      }catch(e){ this.ctx=null; }
+    },
+    resume(){ if(this.ctx && this.ctx.state==='suspended') this.ctx.resume(); },
+    tone(freq, dur, type, vol, slideTo){
+      if(!this.enabled || !this.ctx) return;
+      const t = this.ctx.currentTime;
+      const o = this.ctx.createOscillator();
+      const g = this.ctx.createGain();
+      o.type = type||'square';
+      o.frequency.setValueAtTime(freq, t);
+      if(slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, t+dur);
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(vol||0.25, t+0.008);
+      g.gain.exponentialRampToValueAtTime(0.0001, t+dur);
+      o.connect(g); g.connect(this.master);
+      o.start(t); o.stop(t+dur+0.02);
+    },
+    move(){ this.tone(220,0.05,'square',0.12); },
+    rotate(){ this.tone(440,0.06,'triangle',0.16); },
+    soft(){ this.tone(160,0.03,'square',0.08); },
+    hard(){ this.tone(140,0.12,'square',0.22,70); },
+    lock(){ this.tone(300,0.05,'sine',0.18); },
+    hold(){ this.tone(520,0.08,'sine',0.16,660); },
+    clear(n){
+      if(n>=4){ // テトリス：上昇アルペジオ
+        [523,659,784,1047].forEach((f,i)=>setTimeout(()=>this.tone(f,0.16,'triangle',0.24),i*55));
+      }else{
+        const base=440+ n*60;
+        this.tone(base,0.1,'triangle',0.2,base*1.5);
+        setTimeout(()=>this.tone(base*1.5,0.1,'triangle',0.18),70);
+      }
+    },
+    levelup(){ [523,659,880].forEach((f,i)=>setTimeout(()=>this.tone(f,0.12,'sawtooth',0.18),i*60)); },
+    gameover(){ [440,392,330,247].forEach((f,i)=>setTimeout(()=>this.tone(f,0.22,'sawtooth',0.22),i*130)); }
+  };
+
+  /* ============================ ゲーム状態 ============================ */
+  let board, piece, queue, hold, canHold, state;
+  let score, lines, level;
+  let gravAccum, dropInterval, lockTimer, lockResets;
+  let move = {left:false,right:false,down:false};
+  let dasDir=0, dasTimer=0, arrAccum=0;
+  let lastTime=0;
+
+  function newBoard(){ return Array.from({length:ROWS},()=>new Array(COLS).fill(0)); }
+
+  function shuffledBag(){
+    const b = TYPES.slice();
+    for(let i=b.length-1;i>0;i--){ const j=(Math.random()*(i+1))|0; [b[i],b[j]]=[b[j],b[i]]; }
+    return b;
+  }
+  function refillQueue(){ while(queue.length < 7) queue.push(...shuffledBag()); }
+
+  function spawn(type){
+    const p = {type, rot:0, x:SPAWN_X[type], y:0};
+    if(!valid(p.type,p.rot,p.x,p.y)){ // 詰み
+      piece = p; gameOver(); return;
+    }
+    piece = p;
+    canHold = true;
+    lockTimer = null; lockResets = 0;
+    gravAccum = 0;
+  }
+  function nextPiece(){
+    const t = queue.shift();
+    refillQueue();
+    spawn(t);
+    drawSide();   // ★毎回ネクスト/ホールド表示を更新
+  }
+
+  // セルが盤面上で有効か（yは負＝盤上方の空間としてOK扱い）
+  function valid(type,rot,px,py){
+    for(const [cx,cy] of CELLS[type][rot]){
+      const x=px+cx, y=py+cy;
+      if(x<0||x>=COLS||y>=ROWS) return false;
+      if(y>=0 && board[y][x]) return false;
+    }
+    return true;
+  }
+
+  function tryMove(dx,dy){
+    if(state!=='play') return false;
+    if(valid(piece.type,piece.rot,piece.x+dx,piece.y+dy)){
+      piece.x+=dx; piece.y+=dy;
+      if(dx!==0) onGroundedAction();
+      return true;
+    }
+    return false;
+  }
+
+  function tryRotate(dir){ // dir:+1 右回転(CW) / -1 左回転(CCW)
+    if(state!=='play') return;
+    if(piece.type==='O'){ Sound.rotate(); return; }
+    const from=piece.rot;
+    const to=(from + (dir>0?1:3))%4;
+    const table = (piece.type==='I')?KICK_I:KICK_JLSTZ;
+    const kicks = table[from+'>'+to];
+    for(const [kx,kyUp] of kicks){
+      const nx=piece.x+kx, ny=piece.y-kyUp; // y下向きへ符号反転
+      if(valid(piece.type,to,nx,ny)){
+        piece.x=nx; piece.y=ny; piece.rot=to;
+        Sound.rotate(); onGroundedAction();
+        return;
+      }
+    }
+  }
+
+  // 接地中に動かしたらロックタイマーをリセット（上限あり）
+  function onGroundedAction(){
+    if(lockTimer!==null && !valid(piece.type,piece.rot,piece.x,piece.y+1)){
+      if(lockResets < MAX_LOCK_RESETS){ lockTimer = LOCK_DELAY; lockResets++; }
+    }
+  }
+
+  function ghostY(){
+    let gy=piece.y;
+    while(valid(piece.type,piece.rot,piece.x,gy+1)) gy++;
+    return gy;
+  }
+
+  function hardDrop(){
+    if(state!=='play') return;
+    let d=0;
+    while(valid(piece.type,piece.rot,piece.x,piece.y+1)){ piece.y++; d++; }
+    score += d*2;
+    Sound.hard();
+    lockPiece();
+  }
+
+  function lockPiece(){
+    let topOut=false;
+    for(const [cx,cy] of CELLS[piece.type][piece.rot]){
+      const x=piece.x+cx, y=piece.y+cy;
+      if(y<0){ topOut=true; continue; }
+      board[y][x]=piece.type;
+    }
+    Sound.lock();
+    if(topOut){ gameOver(); return; }
+    clearLines();
+    nextPiece();
+  }
+
+  function clearLines(){
+    let cleared=0;
+    for(let y=ROWS-1;y>=0;y--){
+      if(board[y].every(c=>c)){
+        board.splice(y,1);
+        board.unshift(new Array(COLS).fill(0));
+        cleared++; y++;
+      }
+    }
+    if(cleared>0){
+      const pts=[0,100,300,500,800][cleared]||800;
+      score += pts*level;
+      lines += cleared;
+      const newLevel = Math.floor(lines/10)+1;
+      if(newLevel>level){ level=newLevel; updateSpeed(); Sound.levelup(); }
+      Sound.clear(cleared);
+    }
+    updateStats();
+  }
+
+  function holdPiece(){
+    if(state!=='play' || !canHold) return;
+    Sound.hold();
+    const cur = piece.type;
+    if(hold===null){ hold=cur; nextPiece(); }
+    else{ const tmp=hold; hold=cur; spawn(tmp); }
+    canHold=false;
+    drawSide();
+  }
+
+  function updateSpeed(){
+    // レベルが上がるほど落下が速く
+    dropInterval = Math.max(45, Math.round(900 * Math.pow(0.84, level-1)));
+  }
+
+  /* ============================ 入力（左右DAS含む） ============================ */
+  function pressDir(dir){
+    if(state!=='play') return;
+    if(dir<0) move.left=true; else move.right=true;
+    if(tryMove(dir,0)) Sound.move();
+    dasDir=dir; dasTimer=DAS; arrAccum=0;
+  }
+  function releaseDir(dir){
+    if(dir<0) move.left=false; else move.right=false;
+    if(dasDir===dir){
+      if(move.left){ dasDir=-1; dasTimer=DAS; arrAccum=0; }
+      else if(move.right){ dasDir=1; dasTimer=DAS; arrAccum=0; }
+      else dasDir=0;
+    }
+  }
+  function handleDAS(dt){
+    if(dasDir===0) return;
+    dasTimer-=dt;
+    if(dasTimer<=0){
+      arrAccum+=dt;
+      while(arrAccum>=ARR){ arrAccum-=ARR; if(!tryMove(dasDir,0)) break; }
+    }
+  }
+
+  /* ============================ メインループ ============================ */
+  function tick(dt){
+    if(state!=='play') return;
+    handleDAS(dt);
+
+    const interval = move.down ? Math.min(dropInterval,SOFT_MS) : dropInterval;
+    gravAccum += dt;
+    let descended=false;
+    while(gravAccum >= interval){
+      gravAccum -= interval;
+      if(valid(piece.type,piece.rot,piece.x,piece.y+1)){
+        piece.y++; descended=true;
+        if(move.down) score+=1;
+      }else{ gravAccum=0; break; }
+    }
+    if(descended){ lockTimer=null; lockResets=0; if(move.down) updateStats(); }
+
+    if(!valid(piece.type,piece.rot,piece.x,piece.y+1)){
+      if(lockTimer===null) lockTimer=LOCK_DELAY;
+      else{ lockTimer-=dt; if(lockTimer<=0) lockPiece(); }
+    }else{
+      lockTimer=null;
+    }
+  }
+
+  function loop(ts){
+    if(!lastTime) lastTime=ts;
+    let dt = ts-lastTime; lastTime=ts;
+    if(dt>100) dt=100; // タブ復帰時の暴走防止
+    tick(dt);
+    draw();
+    requestAnimationFrame(loop);
+  }
+
+  /* ============================ 描画 ============================ */
+  const boardCv = document.getElementById('board');
+  const bctx = boardCv.getContext('2d');
+  const holdCv = document.getElementById('hold');
+  const nextCvs = [0,1,2].map(i=>document.getElementById('next'+i));
+
+  function roundedBlock(ctx,x,y,s,color,alpha){
+    ctx.globalAlpha = alpha==null?1:alpha;
+    ctx.fillStyle = color;
+    const r=Math.max(1.5, s*0.16);
+    ctx.beginPath();
+    ctx.moveTo(x+r,y); ctx.arcTo(x+s,y,x+s,y+s,r); ctx.arcTo(x+s,y+s,x,y+s,r);
+    ctx.arcTo(x,y+s,x,y,r); ctx.arcTo(x,y,x+s,y,r); ctx.closePath(); ctx.fill();
+    // ハイライト
+    ctx.globalAlpha = (alpha==null?1:alpha)*0.35;
+    ctx.fillStyle='#ffffff';
+    ctx.fillRect(x+r*0.6,y+r*0.6,s-r*1.2,Math.max(1,s*0.16));
+    ctx.globalAlpha=1;
+  }
+
+  function draw(){
+    const W=boardCv.width, H=boardCv.height;
+    const cell=W/COLS;
+    bctx.clearRect(0,0,W,H);
+
+    // グリッド
+    bctx.strokeStyle='#18233d'; bctx.lineWidth=1;
+    bctx.beginPath();
+    for(let x=1;x<COLS;x++){ bctx.moveTo(x*cell+0.5,0); bctx.lineTo(x*cell+0.5,H); }
+    for(let y=1;y<ROWS;y++){ bctx.moveTo(0,y*cell+0.5); bctx.lineTo(W,y*cell+0.5); }
+    bctx.stroke();
+
+    // 固定ブロック
+    for(let y=0;y<ROWS;y++) for(let x=0;x<COLS;x++){
+      if(board[y][x]) roundedBlock(bctx,x*cell,y*cell,cell,COLORS[board[y][x]]);
+    }
+
+    if(piece && state!=='ready'){
+      // ゴースト
+      const gy=ghostY();
+      if(state==='play'){
+        for(const [cx,cy] of CELLS[piece.type][piece.rot]){
+          const x=piece.x+cx, y=gy+cy;
+          if(y>=0){
+            bctx.globalAlpha=1; bctx.fillStyle=COLORS[piece.type];
+            bctx.globalAlpha=0.18; bctx.fillRect(x*cell+1,y*cell+1,cell-2,cell-2);
+            bctx.globalAlpha=0.5; bctx.strokeStyle=COLORS[piece.type]; bctx.lineWidth=1.5;
+            bctx.strokeRect(x*cell+1.5,y*cell+1.5,cell-3,cell-3);
+            bctx.globalAlpha=1;
+          }
+        }
+      }
+      // 操作中ミノ
+      for(const [cx,cy] of CELLS[piece.type][piece.rot]){
+        const x=piece.x+cx, y=piece.y+cy;
+        if(y>=0) roundedBlock(bctx,x*cell,y*cell,cell,COLORS[piece.type]);
+      }
+    }
+  }
+
+  function drawMini(cv,type){
+    const ctx=cv.getContext('2d');
+    ctx.clearRect(0,0,cv.width,cv.height);
+    if(!type) return;
+    const cells=CELLS[type][0];
+    let minx=9,maxx=-9,miny=9,maxy=-9;
+    for(const [x,y] of cells){ minx=Math.min(minx,x);maxx=Math.max(maxx,x);miny=Math.min(miny,y);maxy=Math.max(maxy,y); }
+    const wC=maxx-minx+1, hC=maxy-miny+1;
+    const cell=Math.min(cv.width/(wC+0.6), cv.height/(hC+0.6));
+    const ox=(cv.width-wC*cell)/2 - minx*cell;
+    const oy=(cv.height-hC*cell)/2 - miny*cell;
+    for(const [x,y] of cells) roundedBlock(ctx, ox+x*cell, oy+y*cell, cell, COLORS[type]);
+  }
+
+  function drawSide(){
+    drawMini(holdCv, hold);
+    drawMini(nextCvs[0], queue[0]);
+    drawMini(nextCvs[1], queue[1]);
+    drawMini(nextCvs[2], queue[2]);
+  }
+
+  function updateStats(){
+    document.getElementById('score').textContent=score;
+    document.getElementById('lines').textContent=lines;
+    document.getElementById('level').textContent=level;
+  }
+
+  /* ============================ 状態遷移 ============================ */
+  const overlay=document.getElementById('overlay');
+  function setOverlay(html, hidden){
+    if(hidden){ overlay.classList.add('hidden'); return; }
+    overlay.classList.remove('hidden');
+    overlay.innerHTML=html;
+  }
+
+  function startGame(){
+    Sound.ensure(); Sound.resume();
+    board=newBoard(); queue=[]; refillQueue(); hold=null; canHold=true;
+    score=0; lines=0; level=1; updateSpeed(); updateStats();
+    move={left:false,right:false,down:false}; dasDir=0;
+    state='play';
+    nextPiece();
+    drawSide();
+    setOverlay('',true);
+  }
+
+  function gameOver(){
+    state='over';
+    Sound.gameover();
+    setOverlay('<h2>GAME OVER</h2><p>スコア '+score+' ／ '+lines+' ライン</p><button class="btn" id="againBtn">もう一度</button>', false);
+    document.getElementById('againBtn').addEventListener('click', startGame);
+  }
+
+  function togglePause(){
+    if(state==='play'){
+      state='paused';
+      setOverlay('<h2 style="color:var(--accent)">PAUSED</h2><p>＋ または P で再開</p><button class="btn" id="resumeBtn">再開</button>',false);
+      document.getElementById('resumeBtn').addEventListener('click',resume);
+    }else if(state==='paused'){ resume(); }
+  }
+  function resume(){ if(state==='paused'){ state='play'; lastTime=0; setOverlay('',true); } }
+
+  function toggleSound(){
+    Sound.enabled=!Sound.enabled;
+    const cap=document.getElementById('btnCapture');
+    cap.style.opacity = Sound.enabled?'1':'0.4';
+    if(Sound.enabled){ Sound.ensure(); Sound.resume(); Sound.rotate(); }
+  }
+
+  /* ============================ ボタン結線 ============================ */
+  // 押す/離すをポインタで統一（マウス・タッチ両対応）。連射が必要なものは hold:true。
+  function bind(id, onDown, onUp){
+    const el=document.getElementById(id);
+    if(!el) return;
+    const down=(e)=>{ e.preventDefault();
+      Sound.ensure(); Sound.resume();
+      el.classList.add('down'); if(onDown) onDown(); };
+    const up=(e)=>{ if(e) e.preventDefault(); el.classList.remove('down'); if(onUp) onUp(); };
+    el.addEventListener('pointerdown',down);
+    el.addEventListener('pointerup',up);
+    el.addEventListener('pointercancel',up);
+    el.addEventListener('pointerleave',(e)=>{ if(el.classList.contains('down')) up(e); });
+  }
+
+  // 十字キー
+  bind('dUp',   ()=>hardDrop());
+  bind('dDown', ()=>{ move.down=true; }, ()=>{ move.down=false; });
+  bind('dLeft', ()=>pressDir(-1), ()=>releaseDir(-1));
+  bind('dRight',()=>pressDir(1),  ()=>releaseDir(1));
+  // 回転・ホールド
+  bind('btnA', ()=>tryRotate(1));   // 右回転
+  bind('btnY', ()=>tryRotate(1));   // 右回転
+  bind('btnB', ()=>tryRotate(-1));  // 左回転
+  bind('btnX', ()=>tryRotate(-1));  // 左回転
+  bind('btnL', ()=>holdPiece());
+  bind('btnR', ()=>holdPiece());
+  bind('btnZL',()=>holdPiece());
+  bind('btnZR',()=>holdPiece());
+  // システム
+  bind('btnPlus',  ()=>togglePause());
+  bind('btnHome',  ()=>togglePause());
+  bind('btnMinus', ()=>startGame());
+  bind('btnCapture',()=>toggleSound());
+
+  document.getElementById('startBtn').addEventListener('click', startGame);
+
+  // キーボード
+  const held=new Set();
+  window.addEventListener('keydown',(e)=>{
+    if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code)) e.preventDefault();
+    if(e.repeat) return;
+    Sound.ensure(); Sound.resume();
+    switch(e.code){
+      case 'ArrowLeft': pressDir(-1); break;
+      case 'ArrowRight': pressDir(1); break;
+      case 'ArrowDown': move.down=true; break;
+      case 'ArrowUp': case 'Space': hardDrop(); break;
+      case 'KeyX': case 'KeyK': tryRotate(1); break;
+      case 'KeyZ': case 'KeyW': tryRotate(-1); break;
+      case 'ShiftLeft': case 'ShiftRight': case 'KeyC': holdPiece(); break;
+      case 'KeyP': case 'Escape': togglePause(); break;
+      case 'KeyM': toggleSound(); break;
+      case 'Enter': if(state!=='play') startGame(); break;
+    }
+  });
+  window.addEventListener('keyup',(e)=>{
+    switch(e.code){
+      case 'ArrowLeft': releaseDir(-1); break;
+      case 'ArrowRight': releaseDir(1); break;
+      case 'ArrowDown': move.down=false; break;
+    }
+  });
+
+  // タブが隠れたら自動ポーズ
+  document.addEventListener('visibilitychange',()=>{ if(document.hidden && state==='play') togglePause(); });
+
+  /* ============================ 起動 ============================ */
+  board=newBoard(); queue=[]; refillQueue(); hold=null; state='ready';
+  score=0; lines=0; level=1; dropInterval=900;
+  updateStats(); drawSide(); draw();
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
+-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <title>TETRIS — Switch Pro Controller</title>
 <style>
